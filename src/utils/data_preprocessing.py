@@ -6,15 +6,21 @@ import pickle
 BOOK_DATA_FILE_PATH = "data/goodreads_data.csv"
 BOOK_DATA_CACHE_FILE_PATH = "cache/book_data_cache.pkl"
 
-def load_data(file_path: str) -> pd.DataFrame:
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"The file {file_path} does not exist.")
+def load_book_data() -> pd.DataFrame:
+    if os.path.exists(BOOK_DATA_CACHE_FILE_PATH):
+        with open(BOOK_DATA_CACHE_FILE_PATH, "rb") as cache_file:
+            return pickle.load(cache_file)
+        
+    if not os.path.exists(BOOK_DATA_FILE_PATH):
+        raise FileNotFoundError(f"The file {BOOK_DATA_FILE_PATH} does not exist.")
     
-    return pd.read_csv(file_path)
+    df = pd.read_csv(BOOK_DATA_FILE_PATH)
+    df = preprocess_data(df)
+    df.to_pickle(BOOK_DATA_CACHE_FILE_PATH)
+    return df
 
 def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     # ,Book,Author,Description,Genres,Avg_Rating,Num_Ratings,URL
-
     if df.empty:
         raise ValueError("The DataFrame is empty.")
 
@@ -25,7 +31,5 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 if __name__ == "__main__":
-    data = load_data(BOOK_DATA_FILE_PATH)
-    processed_data = preprocess_data(data)
-    print(processed_data.head())
-    processed_data.to_pickle(BOOK_DATA_CACHE_FILE_PATH)
+    data = load_book_data()
+    print(len(data))

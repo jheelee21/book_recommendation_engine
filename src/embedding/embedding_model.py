@@ -5,16 +5,18 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 import numpy as np
+from src.utils.util import cosine_similarity, naive_get_k_similar_items
 
 EMBEDDING_MODEL = "text-embedding-3-small"
-EMBEDDING_CACHE_FILE_PATH = "cache/data/book_embeddings_cache.pkl"
+BOOK_EMBEDDING_CACHE_FILE_PATH = "cache/book_description_embeddings_cache.pkl"
+BOOK_GENRE_EMBEDDING_CACHE_FILE_PATH = "cache/book_genre_embeddings_cache.pkl"
 
 class OpenAIEmbeddingModel:
     def __init__(
         self,
-        cache_file_path: str = EMBEDDING_CACHE_FILE_PATH,
+        cache_file_path: str,
+        dimensions: int,
         model: str = EMBEDDING_MODEL,
-        dimensions: int = 100,
     ):
         self.client = self.config_openai()
         self.cache_file_path = cache_file_path
@@ -56,34 +58,6 @@ class OpenAIEmbeddingModel:
         return self.embedding_cache[(text, self.model)]
 
 
-def cosine_similarity(a: list[float], b: list[float]) -> float:
-    a = np.array(a)
-    b = np.array(b)
-
-    dot_product = np.dot(a, b)
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-
-    return dot_product / (norm_a * norm_b)
-
-
-def naive_get_k_similar_items(
-    id: str, embedding: list[float], df: pd.DataFrame, k: int = 5
-) -> list[str]:
-    if id in df["id"].values:
-        df = df[df["id"] != id].copy()
-
-    df["similarity"] = df["embedding"].apply(lambda x: cosine_similarity(embedding, x))
-
-    df = df.sort_values(by="similarity", ascending=False)
-    related_books = df.head(k)["id"].tolist()
-    print(df["similarity"])
-    return related_books
-
-
 if __name__ == "__main__":
     # Example usage
     text1 = "Some ghosts don't seek peace—they demand the truth.\n\nWhen Meera returns to her hometown after the mysterious deaths of her sister Radhika and young nephew Rajiv, she expects grief. Instead, she finds secrets—buried deep in family shadows, whispered in dreams, and painted on the walls of a forgotten temple.\n\nWith the help of a haunted ex-cop, Meera uncovers an ancient cult, a bloodline marked for sacrifice, and a ritual that never ended. But the deeper they dig, the more the past fights back.\n\nPhantasm is a gripping supernatural thriller about love, legacy, and the darkness that waits when truth is left to rot. Some endings demand blood. Others demand the courage to face them."
@@ -107,7 +81,7 @@ if __name__ == "__main__":
     ]
 
     genre_embedding_model = OpenAIEmbeddingModel(
-        cache_file_path="utils/data/genre_embeddings_cache.pkl", dimensions=8
+        cache_file_path=BOOK_GENRE_EMBEDDING_CACHE_FILE_PATH, dimensions=8
     )
     genre_embeddings = [
         genre_embedding_model.get_or_create_embedding(genre)
